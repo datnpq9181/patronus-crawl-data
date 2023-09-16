@@ -1,0 +1,46 @@
+{
+  "customer": {
+    "id": 309554710,
+    "customer_id": 309554710,
+    "external_id": 19154404,
+    "phone": "0901560919",
+    "status": "active",
+    "purchase_total": 0,
+    "point": 0,
+    "tenant_id": 629865,
+    "tier_id": 12963,
+    "tier_name": null,
+    "tier": {
+      "accumulate_type": "money",
+      "current_tier": {
+        "id": 12963,
+        "name": "Thành Viên",
+        "discount_percentage": 0,
+        "max_discount_amount": null,
+        "activated_amount": null,
+        "min_order_total": null
+      },
+      "achieved_at": "2023-09-11T06:33:32Z",
+      "next_tier": {
+        "id": 12964,
+        "name": "Thân Thiết",
+        "discount_percentage": null,
+        "max_discount_amount": null,
+        "activated_amount": 10000,
+        "min_order_total": null
+      }
+    },
+    "payment_programs": [
+      {
+        "id": 6463,
+        "name": "Thanh toán bằng điểm",
+        "amount_per_point": 250,
+        "active": true,
+        "start_date": "2023-02-20T01:50:46Z",
+        "end_date": null
+      }
+    ],
+    "can_activate": true,
+    "amount_to_next_tier": 10000
+  }
+}
