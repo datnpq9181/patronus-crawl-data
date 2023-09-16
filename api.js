@@ -1,19 +1,21 @@
-const puppeteer = require('puppeteer');
-require('dotenv').config();
-const express = require('express');
-const { MongoClient } = require('mongodb');
+const puppeteer = require("puppeteer");
+require("dotenv").config();
+const express = require("express");
+const { MongoClient } = require("mongodb");
 
 const app = express();
 const port = 3000;
 
 let globalCookie; // Variable to store the cookie globally
+const client = new MongoClient(process.env.MONGODB_URI);
+let browserInstance; // To keep track of the browser instance
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 app.use(loginToGetCookie);
 
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   res.json({ cookie: globalCookie });
 });
 
@@ -21,66 +23,91 @@ app.listen(port, () => console.log(`Server running on port ${port}`));
 
 async function loginToGetCookie(req, res, next) {
   try {
-    const browser = await puppeteer.launch({ headless: false });
-    const page = await browser.newPage();
-
-    await page.goto('https://patronusjewelry.mysapogo.com/admin/customers/', {
-      waitUntil: 'networkidle0', // Wait for network to be idle
-    });
-
-    await page.type('input[name="username"]', process.env.USERNAME);
-    await page.type('input[name="password"]', process.env.PASSWORD);
-
-    await Promise.all([
-      page.waitForNavigation({ waitUntil: 'networkidle0' }), // Wait for navigation
-      page.click('button[type="submit"]'),
-    ]);
-
-    await page.waitForTimeout(5000); // Wait 5 seconds for page loaded
-
-    const currentUrl = page.url();
-    if (currentUrl === 'https://patronusjewelry.mysapogo.com/admin/customers/') {
-      const cookies = await page.cookies();
-      const cookie = cookies.map((c) => `${c.name}=${c.value}`).join(';');
-      globalCookie = cookie; // Set the cookie globally
-      console.log('Login successful');
+    const cookie = await getCookieFromBrowser();
+    if (cookie) {
+      globalCookie = cookie;
+      console.log("Login successful");
       console.log(globalCookie);
-
-      await saveCookieToMongoDB(globalCookie); // Save the cookie to MongoDB
-
-      await browser.close();
-      next();
+      await saveCookieToMongoDB(globalCookie);
     } else {
-      console.log('Login unsuccessful');
-      await browser.close();
-      next();
+      console.log("Login unsuccessful");
     }
   } catch (error) {
-    console.error(error);
+    console.error("Error in loginToGetCookie:", error);
+  } finally {
+    next();
   }
 }
 
+async function getCookieFromBrowser() {
+  try {
+    browserInstance = await puppeteer.launch({
+      headless: false,
+      executablePath:
+        "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    });
+    const page = await browserInstance.newPage();
+
+    await page.goto("https://patronusjewelry.mysapogo.com/admin/customers/", {
+      waitUntil: "networkidle0",
+    });
+
+    await page.type('input[name="username"]', process.env.SAPO_USERNAME);
+    await page.type('input[name="password"]', process.env.SAPO_PASSWORD);
+
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "networkidle0" }),
+      page.click('button[type="submit"]'),
+    ]);
+
+    await page.waitForTimeout(5000);
+
+    const cookies = await page.cookies();
+
+    if (
+      page.url() === "https://patronusjewelry.mysapogo.com/admin/customers/"
+    ) {
+      return cookies.map((c) => `${c.name}=${c.value}`).join(";");
+    }
+  } catch (error) {
+    console.error("Error in getCookieFromBrowser:", error);
+  } finally {
+    if (browserInstance) await browserInstance.close();
+  }
+  return null;
+}
+
+client
+  .connect()
+  .then(() => console.log("Connected to MongoDB"))
+  .catch((err) => console.error("Failed to connect to MongoDB:", err));
+
 async function saveCookieToMongoDB(cookie) {
   try {
-    const uri = process.env.MONGODB_URI;
-    const client = new MongoClient(uri, { useUnifiedTopology: true });
-    await client.connect();
+    const database = client.db("sapo");
+    const collection = database.collection("cookie");
 
-    const database = client.db('sapo');
-    const collection = database.collection('cookie');
-
-    const existingCookie = await collection.findOne(); // Find the existing cookie document
+    const existingCookie = await collection.findOne();
 
     if (existingCookie) {
-      await collection.updateOne({}, { $set: { cookie } }); // Update the existing cookie
-      console.log('Cookie updated in MongoDB');
+      await collection.updateOne({}, { $set: { cookie } });
+      console.log("Cookie updated in MongoDB");
     } else {
-      await collection.insertOne({ cookie }); // Add a new cookie
-      console.log('Cookie saved to MongoDB');
+      await collection.insertOne({ cookie });
+      console.log("Cookie saved to MongoDB");
     }
-
-    await client.close();
   } catch (error) {
-    console.error(error);
+    console.error("Error in saveCookieToMongoDB:", error);
   }
+}
+
+// Handle graceful shutdowns
+process.on("SIGINT", gracefulShutdown);
+process.on("SIGTERM", gracefulShutdown);
+process.on("exit", gracefulShutdown);
+
+async function gracefulShutdown() {
+  if (browserInstance) await browserInstance.close();
+  if (client.isConnected()) await client.close();
+  process.exit();
 }
