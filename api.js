@@ -7,46 +7,38 @@ const app = express();
 const port = 3000;
 const client = new MongoClient(process.env.MONGODB_URI);
 
-let globalCookie; // Variable to store the cookie globally
 let browserInstance; // Store the Puppeteer browser instance
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Middleware to check if globalCookie is set, if not, fetch it
+// Middleware to always fetch the cookie
 app.use(async (req, res, next) => {
-    if (!globalCookie) {
-        try {
-            await loginToGetCookie();
-            next();
-        } catch (error) {
-            console.error("Error fetching cookie:", error);
-            res.status(500).send("Error fetching cookie");
-        }
-    } else {
+    try {
+        await loginToGetCookie(req, res);
         next();
+    } catch (error) {
+        console.error("Error fetching cookie:", error);
+        res.status(500).send("Error fetching cookie");
     }
 });
 
 app.get('/', (req, res) => {
-    res.setHeader('Content-Type', 'application/json');
-    const jsonData = { cookie: globalCookie };
-    const prettyJson = JSON.stringify(jsonData, null, 4); // 4 spaces for indentation
-    res.send(prettyJson);
+    // The middleware will handle the response
 });
 
 app.listen(port, () => console.log(`Server running on port ${port}`));
 
-async function loginToGetCookie() {
+async function loginToGetCookie(req, res) {
     try {
-      browserInstance = await puppeteer.launch({
-        headless: true,
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage'
-        ]
-    });
+        browserInstance = await puppeteer.launch({
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage'
+            ]
+        });
         const page = await browserInstance.newPage();
 
         await page.goto('https://patronusjewelry.mysapogo.com/admin/customers/', {
@@ -64,13 +56,20 @@ async function loginToGetCookie() {
         const currentUrl = page.url();
         if (currentUrl === 'https://patronusjewelry.mysapogo.com/admin/customers/') {
             const cookies = await page.cookies();
-            globalCookie = cookies.map((c) => `${c.name}=${c.value}`).join(';');
-            await saveCookieToMongoDB(globalCookie);
+            const cookieString = cookies.map((c) => `${c.name}=${c.value}`).join(';');
+            await saveCookieToMongoDB(cookieString);
+
+            res.setHeader('Content-Type', 'application/json');
+            const jsonData = { cookie: cookieString };
+            const prettyJson = JSON.stringify(jsonData, null, 4); // 4 spaces for indentation
+            res.send(prettyJson);
         } else {
             console.log('Login unsuccessful');
+            res.status(500).send("Login unsuccessful");
         }
     } catch (error) {
         console.error(error);
+        res.status(500).send("Error fetching cookie");
     } finally {
         if (browserInstance) await browserInstance.close();
     }
