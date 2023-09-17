@@ -3,6 +3,8 @@ version: '3'
 services:
   app:
     build: .
+    ports:
+      - "127.0.0.1:3000:3000"  # Bind to localhost on port 3000
     environment:
       - SAPO_USERNAME=${SAPO_USERNAME}
       - SAPO_PASSWORD=${SAPO_PASSWORD}
