@@ -1,5 +1,5 @@
 # Use the official Node.js image as a base image
-FROM node:14-slim
+FROM node:16
 
 # Set the working directory in the container
 WORKDIR /usr/src/app
@@ -41,6 +41,10 @@ COPY . .
 
 # Expose port 3000 to be accessible outside the container
 EXPOSE 3000
+
+# Create a non-root user
+RUN useradd -m myuser
+USER myuser
 
 # Command to run the application
 CMD [ "node", "api.js" ]

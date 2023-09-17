@@ -39,7 +39,10 @@ app.listen(port, () => console.log(`Server running on port ${port}`));
 
 async function loginToGetCookie() {
     try {
-        browserInstance = await puppeteer.launch({ headless: true });
+      browserInstance = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
         const page = await browserInstance.newPage();
 
         await page.goto('https://patronusjewelry.mysapogo.com/admin/customers/', {
