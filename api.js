@@ -78,6 +78,44 @@ async function loginToGetCookie(page, req, res) {
       } 
 }
 
+async function getCookieFromBrowser() {
+    try {
+      browserInstance = await puppeteer.launch({
+        headless: false,
+        executablePath:
+          "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      });
+      const page = await browserInstance.newPage();
+  
+      await page.goto("https://patronusjewelry.mysapogo.com/admin/customers/", {
+        waitUntil: "networkidle0",
+      });
+  
+      await page.type('input[name="username"]', process.env.SAPO_USERNAME);
+      await page.type('input[name="password"]', process.env.SAPO_PASSWORD);
+  
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: "networkidle0" }),
+        page.click('button[type="submit"]'),
+      ]);
+  
+      await page.waitForTimeout(5000);
+  
+      const cookies = await page.cookies();
+  
+      if (
+        page.url() === "https://patronusjewelry.mysapogo.com/admin/customers/"
+      ) {
+        return cookies.map((c) => `${c.name}=${c.value}`).join(";");
+      }
+    } catch (error) {
+      console.error("Error in getCookieFromBrowser:", error);
+    } finally {
+      if (browserInstance) await browserInstance.close();
+    }
+    return null;
+  }
+
 // Handle graceful shutdowns
 process.on("SIGINT", gracefulShutdown);
 process.on("SIGTERM", gracefulShutdown);
