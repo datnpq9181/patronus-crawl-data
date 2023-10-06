@@ -61,13 +61,21 @@ app.listen(port, () => console.log(`Server running on port ${port}`));
 
 async function loginToGetCookie(page, req, res) {
     try {
-        // Rest of your loginToGetCookie function remains unchanged
-        // You can use the provided 'page' object for Puppeteer operations
-        // ...
-    } catch (error) {
-        console.error(error);
-        res.status(500).send("Error fetching cookie");
-    }
+        
+        const cookie = await getCookieFromBrowser();
+        if (cookie) {
+          globalCookie = cookie;
+          console.log("Login successful");
+          console.log(globalCookie);
+          await saveCookieToMongoDB(globalCookie);
+        } else {
+          console.log("Login unsuccessful");
+        }
+      } catch (error) {
+        console.error("Error in loginToGetCookie:", error);
+      } finally {
+        next();
+      } 
 }
 
 // Handle graceful shutdowns
