@@ -11,6 +11,7 @@ let browserInstance = null; // Declare the Puppeteer browser instance outside th
 
 // Function to create a new Puppeteer browser instance
 async function initializeBrowser() {
+    console.log('Opening ...')
     browserInstance = await puppeteer.launch({
         headless: true,
         args: [
@@ -19,6 +20,7 @@ async function initializeBrowser() {
             '--disable-dev-shm-usage'
         ]
     });
+    console.log('Browser opened!')
 }
 
 // Initialize the browser when the application starts
