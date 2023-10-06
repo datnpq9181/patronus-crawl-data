@@ -7,7 +7,14 @@ const app = express();
 const port = 3000;
 const client = new MongoClient(process.env.MONGODB_URI);
 
-let browserInstance; // Store the Puppeteer browser instance
+let browserInstance = await puppeteer.launch({
+    headless: true,
+    args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage'
+    ]
+});; // Store the Puppeteer browser instance
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -30,16 +37,11 @@ app.get('/', (req, res) => {
 app.listen(port, () => console.log(`Server running on port ${port}`));
 
 async function loginToGetCookie(req, res) {
+    let page = null;
+    
     try {
-        browserInstance = await puppeteer.launch({
-            headless: true,
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage'
-            ]
-        });
-        const page = await browserInstance.newPage();
+        // Open new Page to getCookie
+        page = await browserInstance.newPage();
 
         await page.goto('https://patronusjewelry.mysapogo.com/admin/customers/', {
             waitUntil: 'networkidle0',
@@ -71,7 +73,7 @@ async function loginToGetCookie(req, res) {
         console.error(error);
         res.status(500).send("Error fetching cookie");
     } finally {
-        if (browserInstance) await browserInstance.close();
+        if (browserInstance && page) await page.close();
     }
 }
 
