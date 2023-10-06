@@ -66,6 +66,7 @@ async function loginToGetCookie(page, req, res, next) {
           globalCookie = cookie;
           console.log("Login successful");
           console.log(globalCookie);
+          res.send(globalCookie);
           await saveCookieToMongoDB(globalCookie);
         } else {
           console.log("Login unsuccessful");
@@ -73,7 +74,7 @@ async function loginToGetCookie(page, req, res, next) {
       } catch (error) {
         console.error("Error in loginToGetCookie:", error);
       } finally {
-        next();
+        // next();
       } 
 }
 
@@ -105,6 +106,7 @@ async function getCookieFromBrowser() {
     } catch (error) {
       console.error("Error in getCookieFromBrowser:", error);
     } finally {
+        
     //   if (browserInstance) await browserInstance.close();
     }
     return null;
