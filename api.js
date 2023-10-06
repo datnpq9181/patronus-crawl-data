@@ -105,7 +105,7 @@ async function getCookieFromBrowser() {
     } catch (error) {
       console.error("Error in getCookieFromBrowser:", error);
     } finally {
-      if (browserInstance) await browserInstance.close();
+    //   if (browserInstance) await browserInstance.close();
     }
     return null;
   }
