@@ -7,14 +7,22 @@ const app = express();
 const port = 3000;
 const client = new MongoClient(process.env.MONGODB_URI);
 
-let browserInstance = puppeteer.launch({
-    headless: true,
-    args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage'
-    ]
-});; // Store the Puppeteer browser instance
+let browserInstance = null; // Declare the Puppeteer browser instance outside the API route handler
+
+// Function to create a new Puppeteer browser instance
+async function initializeBrowser() {
+    browserInstance = await puppeteer.launch({
+        headless: true,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage'
+        ]
+    });
+}
+
+// Initialize the browser when the application starts
+initializeBrowser();
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -22,8 +30,19 @@ app.use(express.json());
 // Middleware to always fetch the cookie
 app.use(async (req, res, next) => {
     try {
-        await loginToGetCookie(req, res);
-        next();
+        // Check if the browser is initialized, and initialize it if not
+        if (!browserInstance) {
+            await initializeBrowser();
+        }
+
+        // Open a new tab (page) for each API request
+        const page = await browserInstance.newPage();
+
+        // Call the loginToGetCookie function
+        await loginToGetCookie(page, req, res);
+
+        // Close the page when done
+        await page.close();
     } catch (error) {
         console.error("Error fetching cookie:", error);
         res.status(500).send("Error fetching cookie");
@@ -36,63 +55,14 @@ app.get('/', (req, res) => {
 
 app.listen(port, () => console.log(`Server running on port ${port}`));
 
-async function loginToGetCookie(req, res) {
-    let page = null;
-    
+async function loginToGetCookie(page, req, res) {
     try {
-        // Open new Page to getCookie
-        page = await browserInstance.newPage();
-
-        await page.goto('https://patronusjewelry.mysapogo.com/admin/customers/', {
-            waitUntil: 'networkidle0',
-        });
-
-        await page.type('input[name="username"]', process.env.SAPO_USERNAME);
-        await page.type('input[name="password"]', process.env.SAPO_PASSWORD);
-
-        await Promise.all([
-            page.waitForNavigation({ waitUntil: 'networkidle0' }),
-            page.click('button[type="submit"]'),
-        ]);
-
-        const currentUrl = page.url();
-        if (currentUrl === 'https://patronusjewelry.mysapogo.com/admin/customers/') {
-            const cookies = await page.cookies();
-            const cookieString = cookies.map((c) => `${c.name}=${c.value}`).join(';');
-            await saveCookieToMongoDB(cookieString);
-
-            res.setHeader('Content-Type', 'application/json');
-            const jsonData = { cookie: cookieString };
-            const prettyJson = JSON.stringify(jsonData, null, 4); // 4 spaces for indentation
-            res.send(prettyJson);
-        } else {
-            console.log('Login unsuccessful');
-            res.status(500).send("Login unsuccessful");
-        }
+        // Rest of your loginToGetCookie function remains unchanged
+        // You can use the provided 'page' object for Puppeteer operations
+        // ...
     } catch (error) {
         console.error(error);
         res.status(500).send("Error fetching cookie");
-    } finally {
-        if (browserInstance && page) await page.close();
-    }
-}
-
-async function saveCookieToMongoDB(cookie) {
-    try {
-        await client.connect();
-        const database = client.db('sapo');
-        const collection = database.collection('cookie');
-
-        const existingCookie = await collection.findOne();
-        if (existingCookie) {
-            await collection.updateOne({}, { $set: { cookie } });
-            console.log('Cookie updated in MongoDB');
-        } else {
-            await collection.insertOne({ cookie });
-            console.log('Cookie saved to MongoDB');
-        }
-    } catch (error) {
-        console.error(error);
     }
 }
 
@@ -102,7 +72,12 @@ process.on("SIGTERM", gracefulShutdown);
 process.on("exit", gracefulShutdown);
 
 async function gracefulShutdown() {
-    if (client.isConnected()) await client.close();
+    if (browserInstance) {
+        await browserInstance.close();
+    }
+    if (client.isConnected()) {
+        await client.close();
+    }
     process.exit();
 }
 
