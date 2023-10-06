@@ -80,12 +80,7 @@ async function loginToGetCookie(page, req, res) {
 
 async function getCookieFromBrowser() {
     try {
-      browserInstance = await puppeteer.launch({
-        headless: false,
-        executablePath:
-          "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-      });
-      const page = await browserInstance.newPage();
+      page = await browserInstance.newPage();
   
       await page.goto("https://patronusjewelry.mysapogo.com/admin/customers/", {
         waitUntil: "networkidle0",
