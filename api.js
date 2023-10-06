@@ -111,6 +111,26 @@ async function getCookieFromBrowser() {
     return null;
   }
 
+  async function saveCookieToMongoDB(cookie) {
+    try {
+      const database = client.db("sapo");
+      const collection = database.collection("cookie");
+  
+      const existingCookie = await collection.findOne();
+  
+      if (existingCookie) {
+        await collection.updateOne({}, { $set: { cookie } });
+        console.log("Cookie updated in MongoDB");
+      } else {
+        await collection.insertOne({ cookie });
+        console.log("Cookie saved to MongoDB");
+      }
+    } catch (error) {
+      console.error("Error in saveCookieToMongoDB:", error);
+    }
+  }
+  
+
 // Handle graceful shutdowns
 process.on("SIGINT", gracefulShutdown);
 process.on("SIGTERM", gracefulShutdown);
