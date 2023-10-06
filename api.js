@@ -29,7 +29,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 // Middleware to always fetch the cookie
-app.use(async (req, res) => {
+app.use(async (req, res, next) => {
     console.log('Tab opening ...')
     try {
         // Check if the browser is initialized, and initialize it if not
@@ -41,7 +41,7 @@ app.use(async (req, res) => {
         const page = await browserInstance.newPage();
         console.log('Tab opened!')
         // Call the loginToGetCookie function
-        await loginToGetCookie(page, req, res);
+        await loginToGetCookie(page, req, res, next);
 
         // Close the page when done
         await page.close();
@@ -58,7 +58,7 @@ app.get('/', (req, res) => {
 
 app.listen(port, () => console.log(`Server running on port ${port}`));
 
-async function loginToGetCookie(page, req, res) {
+async function loginToGetCookie(page, req, res, next) {
     try {
         
         const cookie = await getCookieFromBrowser();
