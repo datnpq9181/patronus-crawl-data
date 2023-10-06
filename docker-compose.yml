@@ -9,3 +9,4 @@ services:
       - SAPO_USERNAME=${SAPO_USERNAME}
       - SAPO_PASSWORD=${SAPO_PASSWORD}
       - MONGODB_URI=${MONGODB_URI}
+    restart: always
