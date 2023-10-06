@@ -31,6 +31,7 @@ app.use(express.json());
 
 // Middleware to always fetch the cookie
 app.use(async (req, res, next) => {
+    console.log('Tab opening ...')
     try {
         // Check if the browser is initialized, and initialize it if not
         if (!browserInstance) {
@@ -39,12 +40,13 @@ app.use(async (req, res, next) => {
 
         // Open a new tab (page) for each API request
         const page = await browserInstance.newPage();
-
+        console.log('Tab opened!')
         // Call the loginToGetCookie function
         await loginToGetCookie(page, req, res);
 
         // Close the page when done
         await page.close();
+        console.log('Tab closed!')
     } catch (error) {
         console.error("Error fetching cookie:", error);
         res.status(500).send("Error fetching cookie");
