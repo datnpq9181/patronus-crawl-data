@@ -10,5 +10,7 @@ services:
       - SAPO_PASSWORD=${SAPO_PASSWORD}
       - MONGODB_URI=${MONGODB_URI}
     restart: always
+    volumes:
+      - ./api.js:/usr/src/app/api.js
   
       
