@@ -11,7 +11,7 @@ let browserInstance = null; // Declare the Puppeteer browser instance outside th
 
 // Function to create a new Puppeteer browser instance
 async function initializeBrowser() {
-    console.log('Opening browser...');
+    console.log('Opening ...')
     browserInstance = await puppeteer.launch({
         args: [
             '--no-sandbox',
@@ -19,7 +19,7 @@ async function initializeBrowser() {
             '--disable-dev-shm-usage'
         ]
     });
-    console.log('Browser opened successfully!');
+    console.log('Browser opened!')
 }
 
 // Initialize the browser when the application starts
@@ -30,7 +30,7 @@ app.use(express.json());
 
 // Middleware to always fetch the cookie
 app.use(async (req, res) => {
-    console.log('Opening a new tab...');
+    console.log('Tab opening ...')
     try {
         // Check if the browser is initialized, and initialize it if not
         if (!browserInstance) {
@@ -39,15 +39,13 @@ app.use(async (req, res) => {
 
         // Open a new tab (page) for each API request
         const page = await browserInstance.newPage();
-        console.log('New tab opened!');
-
+        console.log('Tab opened!')
         // Call the loginToGetCookie function
         await loginToGetCookie(page, req, res);
-        console.log('Data fetched successfully!');
 
         // Close the page when done
         await page.close();
-        console.log('Tab closed!');
+        console.log('Tab closed!')
     } catch (error) {
         console.error("Error fetching cookie:", error);
         res.status(500).send("Error fetching cookie");
@@ -62,40 +60,75 @@ app.listen(port, () => console.log(`Server running on port ${port}`));
 
 async function loginToGetCookie(page, req, res) {
     try {
-        const cookie = await getCookieFromBrowser(page);
+        
+        const cookie = await getCookieFromBrowser();
         if (cookie) {
-            globalCookie = cookie;
-            console.log("Login successful");
-            console.log(globalCookie);
-            await saveCookieToMongoDB(globalCookie);
+          globalCookie = cookie;
+          console.log("Login successful");
+          console.log(globalCookie);
+          await saveCookieToMongoDB(globalCookie);
         } else {
-            console.log("Login unsuccessful");
+          console.log("Login unsuccessful");
         }
-    } catch (error) {
+      } catch (error) {
         console.error("Error in loginToGetCookie:", error);
-    }
+      } finally {
+        next();
+      } 
 }
 
-async function getCookieFromBrowser(page) {
+async function getCookieFromBrowser() {
     try {
-        // Rest of your getCookieFromBrowser function remains unchanged
-        // ...
+      page = await browserInstance.newPage();
+  
+      await page.goto("https://patronusjewelry.mysapogo.com/admin/customers/", {
+        waitUntil: "networkidle0",
+      });
+  
+      await page.type('input[name="username"]', process.env.SAPO_USERNAME);
+      await page.type('input[name="password"]', process.env.SAPO_PASSWORD);
+  
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: "networkidle0" }),
+        page.click('button[type="submit"]'),
+      ]);
+  
+      await page.waitForTimeout(5000);
+  
+      const cookies = await page.cookies();
+  
+      if (
+        page.url() === "https://patronusjewelry.mysapogo.com/admin/customers/"
+      ) {
+        return cookies.map((c) => `${c.name}=${c.value}`).join(";");
+      }
     } catch (error) {
-        console.error("Error in getCookieFromBrowser:", error);
+      console.error("Error in getCookieFromBrowser:", error);
     } finally {
-        if (browserInstance) await browserInstance.close();
+      if (browserInstance) await browserInstance.close();
     }
     return null;
-}
+  }
 
-async function saveCookieToMongoDB(cookie) {
+  async function saveCookieToMongoDB(cookie) {
     try {
-        // Rest of your saveCookieToMongoDB function remains unchanged
-        // ...
+      const database = client.db("sapo");
+      const collection = database.collection("cookie");
+  
+      const existingCookie = await collection.findOne();
+  
+      if (existingCookie) {
+        await collection.updateOne({}, { $set: { cookie } });
+        console.log("Cookie updated in MongoDB");
+      } else {
+        await collection.insertOne({ cookie });
+        console.log("Cookie saved to MongoDB");
+      }
     } catch (error) {
-        console.error("Error in saveCookieToMongoDB:", error);
+      console.error("Error in saveCookieToMongoDB:", error);
     }
-}
+  }
+  
 
 // Handle graceful shutdowns
 process.on("SIGINT", gracefulShutdown);
