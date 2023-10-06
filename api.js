@@ -7,7 +7,7 @@ const app = express();
 const port = 3000;
 const client = new MongoClient(process.env.MONGODB_URI);
 
-let browserInstance = await puppeteer.launch({
+let browserInstance = puppeteer.launch({
     headless: true,
     args: [
         '--no-sandbox',
